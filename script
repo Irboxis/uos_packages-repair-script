@@ -1,0 +1,80 @@
+#! /bin/bash
+
+#This is a quick script for machine model and enviroment checking and file operations.
+#If the dependency packags to be detected need to be increased modify the variable "Line".
+#Setting the character set,if you need chinese,please set it to "zh_CN.UTF-8"
+export LANG=en_US.UTF-8
+#Font color
+Red="\033[31m"
+Blue="\033[34m"
+Yellow="\033[33m"
+Nil="\033[0m"
+#Dependency package query row count
+Line=3
+#System version check
+Version=""
+os=$(cat /etc/os-version | tail -2 )
+if [[ $os =~ "MinorVersion" && $os =~ "OsBuild" ]];then
+	masVer=$(echo "$os" | sed -n '1p' | awk -F '=' '{print $2}')
+	secVer=$(echo "$os" | sed -n '2p' | awk -F '.' '{print $2}')
+	Version=$masVer-$secVer
+	echo -e "${Blue}[INFO]: System Version: ${Version} ${Nil}"	
+else
+	echo -e "${Red}[ERROR]: System version check failed${Nil}"
+	exit 1
+fi
+#Dependency packages check
+pg=$(dpkg -l | grep cups | head -${Line})
+if [[ $pg =~ "cups-bsd" && $pg =~ "cups-client" ]];then
+	declare -A map
+	while read -r k v;do
+		map["$k"]=$v
+	done < <(echo "$pg" | awk '{print $2,$3}')
+	temp="cups"
+	target=0
+	for item in "${!map[@]}";do
+		echo -e "${Blue}[INFO]: ${item} Version:   ${map[$item]} ${Nil}"
+		if [[ ${map[$temp]} != ${map[$item]} ]];then
+			break
+			target=1
+		fi
+	done
+	if [[ $target == 0 ]];then
+		echo -e "${Blue}[INFO]: Dependency package complete${Nil}"
+	else
+		echo -e "${Yellow}[WARN]: Dependency package damaged${Nil}"
+	fi
+	
+else
+	echo -e "${Red}[ERROR]: Dependency packages check faild${Nil}"
+	exit 1
+fi
+#Upgrade package copy
+Install_Packages="/media/${USER}/桌面运维组/UOS/UOS_patches/install_packages"
+Desktop="/home/${USER}/Desktop"
+tag=1
+if (( $masVer < 1050 && $masVer >= 1040 ));then
+	folder=$Install_Packages/$masVer
+	tag=0
+elif (( $masVer >= 1050 ));then
+	folder=$Install_Packages/$Version
+	tag=0
+else
+	folder=$Install_Packages/$masVer
+	echo -e "${Yellow}[INFO]: The current version is less than 1040,please go to the ${folder} to manually upgrade..${Nil}"
+fi
+if [[ $tag == 0 ]];then
+	cp -a $folder/* $Desktop
+	name=$(cd $folder && ls * )
+	echo -e "${Blue}[INFO]: Upgrade packages was copied successfully.${Nil}"
+	echo -e "${Blue}[INFO]: Packages name: ${name} ${Nil}"
+	echo -e "${Blue}[INFO]: Packages path: ${folder} ${Nil}"
+else
+	echo "${Red}[ERROR]: Folder path error or other reasons.${folder}.${Nil}"
+fi
+#Update system time
+echo -e "Set the current system time: ${Yellow}[format]: 2006-01-02 15:04:05${Nil}"
+read nowTime
+systemctl stop systemd-timesyncd && systemctl disable systemd-timesyncd
+timedatectl set-time "$nowTime"
+
