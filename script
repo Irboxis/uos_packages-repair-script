@@ -1,0 +1,74 @@
+#! /bin/bash
+
+export LANG=en_US.UTF-8
+Red="\033[31m"
+Blue="\033[34m"
+Yellow="\033[33m"
+Nil="\033[0m"
+Line=3
+
+Version=""
+os=$(cat /etc/os-version | tail -2 )
+if [[ $os =~ "MinorVersion" && $os =~ "OsBuild" ]];then
+	masVer=$(echo "$os" | sed -n '1p' | awk -F '=' '{print $2}')
+	secVer=$(echo "$os" | sed -n '2p' | awk -F '.' '{print $2}')
+	Version=$masVer-$secVer
+	echo -e "${Blue}[INFO]: 系统版本: ${Version} ${Nil}"	
+else
+	echo -e "${Red}[ERROR]: 系统版本检查失败${Nil}"
+	exit 1
+fi
+
+pg=$(dpkg -l | grep cups | head -${Line})
+if [[ $pg =~ "cups-bsd" && $pg =~ "cups-client" ]];then
+	declare -A map
+	while read -r k v;do
+		map["$k"]=$v
+	done < <(echo "$pg" | awk '{print $2,$3}')
+	temp="cups"
+	target=0
+	for item in "${!map[@]}";do
+		echo -e "${Blue}[INFO]: ${item} 版本:   ${map[$item]} ${Nil}"
+		if [[ ${map[$temp]} != ${map[$item]} ]];then
+			target=1
+		fi
+	done
+	if (( $target == 0 ));then
+		echo -e "${Blue}[INFO]: 依赖包完整${Nil}"
+	else
+		echo -e "${Yellow}[WARN]: 依赖包不一致,需要修复${Nil}"
+	fi
+	
+else
+	echo -e "${Red}[ERROR]: 依赖包检查失败${Nil}"
+fi
+#Upgrade package copy
+Install_Packages="/media/${USER}/桌面运维组/UOS/UOS_patches/install_packages"
+Desktop="/home/${USER}/Desktop"
+tag=1
+if (( $masVer < 1050 && $masVer >= 1040 ));then
+	folder=$Install_Packages/$masVer
+	tag=0
+elif (( $masVer >= 1050 ));then
+	folder=$Install_Packages/$Version
+	tag=0
+else
+	folder=$Install_Packages/$masVer
+	echo -e "${Yellow}[INFO]: 当前系统版本低于 1040-x,请前往 \"${folde}\" 目录下完成系统升级.${Nil}"
+	tag=2
+fi
+if (( $tag == 0 ));then
+	echo -e "${Blue}[INFO]: 开始进行升级包复制..${Nil}"
+	rsync -a --progress $folder/* $Desktop
+	name=$(cd $folder && ls * )
+	echo -e "${Blue}[INFO]: 升级包复制完成.${Nil}"
+	echo -e "${Blue}[INFO]: 升级包名称: ${name} ${Nil}"
+	echo -e "${Blue}[INFO]: 升级包路径: ${folder} ${Nil}"
+elif (( $tag == 1 ));then
+	echo "${Red}[ERROR]: 升级包复制失败,路径存在问题或其他原因.${folder}.${Nil}"
+fi
+#Update system time
+#echo -e "Set the current system time: ${Yellow}[format]: 2006-01-02 15:04:05${Nil}"
+#read nowTime
+#systemctl stop systemd-timesyncd && systemctl disable systemd-timesyncd
+#timedatectl set-time "$nowTime"
