@@ -34,7 +34,7 @@ if [[ $pg =~ "cups-bsd" && $pg =~ "cups-client" ]];then
 		fi
 	done
 	if (( $target == 0 ));then
-		echo -e "${Blue}[INFO]: 依赖包完整${Nil}"
+		echo -e "${Blue}[INFO]: 依赖包完整，无需进行修复. ${Nil}"
 	else
 		echo -e "${Yellow}[WARN]: 依赖包不一致,需要修复${Nil}"
 	fi
