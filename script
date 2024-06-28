@@ -36,11 +36,11 @@ if [[ $pg =~ "cups-bsd" && $pg =~ "cups-client" ]];then
 	if (( $target == 0 ));then
 		echo -e "${Blue}[INFO]: 依赖包完整，无需进行修复. ${Nil}"
 	else
-		echo -e "${Yellow}[WARN]: 依赖包不一致,需要修复${Nil}"
+		echo -e "${Yellow}[WARN]: 依赖包损坏，需要进行修复. ${Nil}"
 	fi
 	
 else
-	echo -e "${Red}[ERROR]: 依赖包检查失败${Nil}"
+	echo -e "${Red}[ERROR]: 依赖包检查失败 ${Nil}"
 fi
 #Upgrade package copy
 Install_Packages="/media/${USER}/桌面运维组/UOS/UOS_patches/install_packages"
